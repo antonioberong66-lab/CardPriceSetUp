@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Card Gallery with PHP Price Calculation and Background</title>
+<title>Card Gallery with Save Mode</title>
 <style>
   /* Background image from local file */
   body {
@@ -11,15 +11,14 @@
      place-items: center;
      height: 100vh;
      background-image: url('luffy.jpg');
-     background-repeat: repeat;
+     background-repeat: no-repeat;
      background-position: center center;
      background-size: cover;
      margin: 0;
   }
-  /* Header and controls */
   .header {
     display: flex;
-    flex-wrap: nowrap; /* Prevent wrapping */
+    flex-wrap: nowrap; /* prevent wrap */
     justify-content: space-between;
     align-items: center;
     max-width: 1280px;
@@ -32,7 +31,7 @@
     display: flex;
     flex-grow: 1;
     gap: 10px;
-    min-width: 0; /* Allow shrinking */
+    min-width: 0;
   }
   input[type="search"] {
     flex-grow: 1;
@@ -60,7 +59,6 @@
   .mode-btn:hover, .add-card-btn:hover {
     background: #254fa9;
   }
-  /* Cards container */
   .cards-container {
     display: flex;
     flex-wrap: wrap;
@@ -71,7 +69,6 @@
     margin: 10px auto 20px auto;
     width: 90vw;
   }
-  /* Card styles */
   .card-display, .card-edit {
     background: rgba(255, 255, 255, 0.9);
     border-radius: 12px;
@@ -180,15 +177,22 @@
 </div>
 
 <script>
-let cardsData = [
+const STORAGE_KEY = 'cardGalleryData';
+
+let cardsData = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [
   {id: 1, imgUrl: '', code: 'OP02-004', name: 'Nordicks', price: '1280', rate: '0.25', quantity: '1'}
 ];
+
 let displayMode = true;
 
 const cardsContainer = document.getElementById('cards-container');
 const toggleModeBtn = document.getElementById('toggleModeBtn');
 const addCardBtn = document.getElementById('addCardBtn');
 const searchBox = document.getElementById('searchBox');
+
+function saveData() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(cardsData));
+}
 
 function getPhpPrice(card) {
   let price = parseFloat(card.price) || 0;
@@ -257,6 +261,7 @@ function renderEditCards(filter) {
         reader.onload = function(ev) {
           card.imgUrl = ev.target.result;
           document.getElementById(imgId).src = ev.target.result;
+          saveData();
         };
         reader.readAsDataURL(file);
       }
@@ -275,6 +280,7 @@ function renderEditCards(filter) {
           e.target.closest('.card-edit').querySelector('.php-row').textContent =
             'PHP Price: ' + getPhpPrice(card);
         }
+        saveData();
       }
     });
   });
@@ -298,6 +304,7 @@ toggleModeBtn.onclick = () => {
 addCardBtn.onclick = () => {
   const newId = cardsData.length ? cardsData[cardsData.length-1].id +1 : 1;
   cardsData.push({id: newId, imgUrl: '', code: '', name: '', price: '', rate: '', quantity: '0'});
+  saveData();
   renderCards();
 };
 
