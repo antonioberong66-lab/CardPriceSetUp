@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Card Gallery with PHP Price Calculation and Background</title>
+<style>
+  /* Background image from local file */
+  body {
+     display: grid;
+     place-items: center;
+     height: 100vh;
+     background-image: url('luffy.jpg');
+     background-repeat: repeat;
+     background-position: center center;
+     background-size: cover;
+     margin: 0;
+  }
+  /* Header and controls */
+  .header {
+    display: flex;
+    flex-wrap: nowrap; /* Prevent wrapping */
+    justify-content: space-between;
+    align-items: center;
+    max-width: 1280px;
+    margin: 10px auto 10px auto;
+    gap: 10px;
+    width: 90vw;
+    min-width: 320px;
+  }
+  .header-left {
+    display: flex;
+    flex-grow: 1;
+    gap: 10px;
+    min-width: 0; /* Allow shrinking */
+  }
+  input[type="search"] {
+    flex-grow: 1;
+    min-width: 150px;
+    max-width: 700px;
+    padding: 9px 16px;
+    font-size: 1em;
+    border-radius: 8px;
+    border: 1px solid #b5c0d5;
+    outline: none;
+  }
+  .mode-btn, .add-card-btn {
+    padding: 9px 18px;
+    font-size: 1em;
+    border-radius: 8px;
+    outline: none;
+    border: none;
+    background: #326aec;
+    color: white;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background 0.25s;
+    white-space: nowrap;
+  }
+  .mode-btn:hover, .add-card-btn:hover {
+    background: #254fa9;
+  }
+  /* Cards container */
+  .cards-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 18px;
+    justify-content: center;
+    align-items: flex-start;
+    max-width: 1280px;
+    margin: 10px auto 20px auto;
+    width: 90vw;
+  }
+  /* Card styles */
+  .card-display, .card-edit {
+    background: rgba(255, 255, 255, 0.9);
+    border-radius: 12px;
+    box-shadow: 0 1.5px 10px rgba(80,80,115,0.10);
+    border: 1px solid #d6dde8;
+    width: 220px;
+    text-align: center;
+    padding: 16px 10px 12px 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+  }
+  .card-display img, .card-edit img {
+    max-width: 160px;
+    max-height: 160px;
+    width: auto;
+    height: auto;
+    margin: 0 auto 8px auto;
+    border-radius: 7px;
+    border: 1px solid #bbb;
+    background: #f3f3fa;
+    object-fit: contain;
+  }
+  .card-code {
+    background: #eef2f7;
+    border-radius: 3px;
+    font-size: 13px;
+    padding: 2px 0;
+    color: #444;
+    font-weight: bold;
+    margin-bottom: 2px;
+  }
+  .card-name {
+    color: #1956d6;
+    font-weight: bold;
+    font-size: 16px;
+  }
+  .yen-row {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+  }
+  .price, .rate, .quantity {
+    font-size: 14px;
+    color: #222;
+    font-weight: bold;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .php-row {
+    margin: 0 auto 2px auto;
+    padding: 2px 0;
+    background: #eef2f7;
+    border-radius: 4px;
+    font-size: 15px;
+    color: #307373;
+    font-weight: bold;
+  }
+  .card-edit input[type="text"], .card-edit input[type="number"] {
+    font-size: 13px;
+    padding: 4px 8px;
+    border: 1px solid #b5c0d5;
+    border-radius: 6px;
+    width: 82px;
+    margin: 0 0 2px 0;
+    text-align: center;
+  }
+  .card-edit label {
+    font-size: 12px;
+    color: #777;
+    margin-bottom: 2px;
+  }
+  .card-edit .yen-row label {
+    margin-bottom: 0;
+  }
+  .card-edit .quantity label {
+    margin-bottom: 0;
+  }
+  .img-upload-label {
+    font-size: 12px; color: #1956d6; margin-bottom: 2px; cursor:pointer;
+  }
+  input[type="file"] { display:none; }
+  @media (max-width: 700px) {
+    .card-display, .card-edit {
+      width: 96vw;
+      min-width: 0;
+      padding: 10px 2vw 10px 2vw;
+    }
+    .card-edit img, .card-display img { width: 98vw; height: auto; max-height:none; }
+    .card-edit input[type="text"], .card-edit input[type="number"] { width: 42vw;}
+  }
+</style>
+</head>
+<body>
+<div class="header">
+  <div class="header-left">
+    <input type="search" id="searchBox" placeholder="Search by code or name...">
+    <button class="mode-btn" id="toggleModeBtn">Switch to Edit Mode</button>
+  </div>
+  <button class="add-card-btn" id="addCardBtn">+ Add Card</button>
+</div>
+
+<div class="cards-container" id="cards-container">
+  <!-- Cards rendered here -->
+</div>
+
+<script>
+let cardsData = [
+  {id: 1, imgUrl: '', code: 'OP02-004', name: 'Nordicks', price: '1280', rate: '0.25', quantity: '1'}
+];
+let displayMode = true;
+
+const cardsContainer = document.getElementById('cards-container');
+const toggleModeBtn = document.getElementById('toggleModeBtn');
+const addCardBtn = document.getElementById('addCardBtn');
+const searchBox = document.getElementById('searchBox');
+
+function getPhpPrice(card) {
+  let price = parseFloat(card.price) || 0;
+  let rate = parseFloat(card.rate) || 0;
+  return (price * rate).toFixed(2);
+}
+
+function renderDisplayCards(filter) {
+  cardsContainer.innerHTML = '';
+  cardsData.forEach(card => {
+    if(!card.code.toLowerCase().includes(filter) && !card.name.toLowerCase().includes(filter)) return;
+    const cardElem = document.createElement('div');
+    cardElem.className = 'card-display';
+    cardElem.innerHTML = `
+      <img src="${card.imgUrl || ''}" alt="Card Image" />
+      <div class="card-code">${card.code}</div>
+      <div class="card-name">${card.name}</div>
+      <div class="price">Yuyutei Price: ${card.price} yen</div>
+      <div class="php-row">PHP Price: ${getPhpPrice(card)}</div>
+      <div class="quantity">Quantity: ${card.quantity}</div>
+    `;
+    cardsContainer.appendChild(cardElem);
+  });
+}
+
+function renderEditCards(filter) {
+  cardsContainer.innerHTML = '';
+  cardsData.forEach(card => {
+    if(!card.code.toLowerCase().includes(filter) && !card.name.toLowerCase().includes(filter)) return;
+    const cardElem = document.createElement('div');
+    cardElem.className = 'card-edit';
+    const imgId = 'img'+card.id;
+    const fileId = 'file'+card.id;
+    cardElem.innerHTML = `
+      <img src="${card.imgUrl || ''}" alt="Card Image" id="${imgId}" />
+      <label class="img-upload-label" for="${fileId}">Choose Image</label>
+      <input type="file" accept="image/*" id="${fileId}" data-id="${card.id}" style="display:none"/>
+      <label>Code & Name</label>
+      <input type="text" value="${card.code}" data-id="${card.id}" data-field="code" placeholder="Code"/>
+      <input type="text" value="${card.name}" data-id="${card.id}" data-field="name" placeholder="Name"/>
+      <div class="yen-row">
+        <div>
+          <label>Yuyutei Price</label>
+          <input type="number" value="${card.price}" min="0" data-id="${card.id}" data-field="price" placeholder="Yuyutei Price"/>
+        </div>
+        <div>
+          <label>Rate</label>
+          <input type="number" value="${card.rate}" step="0.01" min="0" data-id="${card.id}" data-field="rate" placeholder="Rate"/>
+        </div>
+      </div>
+      <div class="php-row">PHP Price: ${getPhpPrice(card)}</div>
+      <div class="quantity">
+        <label>Quantity</label>
+        <input type="number" value="${card.quantity}" min="0" data-id="${card.id}" data-field="quantity"/>
+      </div>
+    `;
+    cardsContainer.appendChild(cardElem);
+
+    cardElem.querySelector('.img-upload-label').onclick = function() {
+      cardElem.querySelector('input[type="file"]').click();
+    };
+    cardElem.querySelector('input[type="file"]').onchange = function(e) {
+      const file = e.target.files[0];
+      if(file) {
+        const reader = new FileReader();
+        reader.onload = function(ev) {
+          card.imgUrl = ev.target.result;
+          document.getElementById(imgId).src = ev.target.result;
+        };
+        reader.readAsDataURL(file);
+      }
+    };
+  });
+
+  const inputs = cardsContainer.querySelectorAll('input[type=text], input[type=number]');
+  inputs.forEach(input => {
+    input.addEventListener('input', e => {
+      const id = +e.target.dataset.id;
+      const field = e.target.dataset.field;
+      const card = cardsData.find(c => c.id === id);
+      if(card){
+        card[field] = e.target.value;
+        if(field === 'price' || field === 'rate'){
+          e.target.closest('.card-edit').querySelector('.php-row').textContent =
+            'PHP Price: ' + getPhpPrice(card);
+        }
+      }
+    });
+  });
+}
+
+function renderCards() {
+  const filter = searchBox.value.trim().toLowerCase();
+  if(displayMode){
+    renderDisplayCards(filter);
+  } else {
+    renderEditCards(filter);
+  }
+}
+
+toggleModeBtn.onclick = () => {
+  displayMode = !displayMode;
+  toggleModeBtn.textContent = displayMode ? 'Switch to Edit Mode' : 'Switch to Display Mode';
+  renderCards();
+};
+
+addCardBtn.onclick = () => {
+  const newId = cardsData.length ? cardsData[cardsData.length-1].id +1 : 1;
+  cardsData.push({id: newId, imgUrl: '', code: '', name: '', price: '', rate: '', quantity: '0'});
+  renderCards();
+};
+
+searchBox.oninput = () => {
+  renderCards();
+};
+
+renderCards();
+</script>
+
+</body>
+</html>
